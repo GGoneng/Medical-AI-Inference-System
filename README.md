@@ -45,12 +45,12 @@ The system aims to enhance diagnostic accuracy, reduce the workload of clinician
 
 | Category        | Tools / Frameworks                |
 |----------------|-----------------------------------|
-| OS              | Ubuntu 22.04                      |
+| OS              | Ubuntu 22.04, Windows 11 PRO                      |
 | Language        | Python 3.10, HTML5, CSS3, JavaScript(ES6) |
 | Framework       | PyTorch, FastAPI, React     |
 | Environment     | Jupyter Notebook / VSCode             |
 | Database        | Redis                               |
-| Hardware        | NVIDIA RTX 4090                      |
+| Hardware        | NVIDIA RTX 4090, NVIDIA RTX 4060                      |
 
 
 <br><br>
