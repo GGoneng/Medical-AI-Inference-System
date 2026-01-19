@@ -12,7 +12,7 @@ import numpy as np
 
 
 class XRayDataset(Dataset):
-    def __init__(self, img_path, json_list, transform=None):
+    def __init__(self, img_path: , json_list, transform=None):
         self.img_path = img_path
         self.label = json_list
         self.transform = transform
@@ -34,7 +34,7 @@ class XRayDataset(Dataset):
             draw.polygon(points, fill=class_id)
         
         img = np.array(img, dtype=np.float32) / 255.0
-        mask = np.array(mask, dtype=np.int64)
+        mask = np.array(mask, dtype=np.uint8)
 
 
         if self.transform:
