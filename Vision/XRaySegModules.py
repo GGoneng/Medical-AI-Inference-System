@@ -16,6 +16,16 @@ import albumentations as A
 
 from typing import List, Optional, Tuple, Literal
 
+import random
+
+# 실험 조건 고정 함수
+def set_seed(seed: int=7) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+
 class XRayDataset(Dataset):
     img_path: List[str]
     json_list: List[str]
@@ -67,10 +77,10 @@ class _Conv(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.GroupNorm(max(1, out_ch // 8), out_ch),
-            nn.ReLU(),
+            nn.LeakyReLU(0.01),
             nn.Conv2d(out_ch, out_ch, 3, padding=1),
             nn.GroupNorm(max(1, out_ch // 8), out_ch),
-            nn.ReLU()
+            nn.LeakyReLU(0.01)
         )
     
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -84,7 +94,7 @@ class _Expand(nn.Module):
         super().__init__()
         self.up = nn.Sequential(
             nn.ConvTranspose2d(in_ch, out_ch, 2, stride=2),
-            nn.ReLU()
+            nn.LeakyReLU(0.01)
         )
         self.conv = _Conv(in_ch, out_ch)
 
@@ -95,7 +105,7 @@ class _Expand(nn.Module):
 
         return x
 
-class OriginUNet(nn.Module):
+class SegmentationUNet(nn.Module):
     encoder1: _Conv
     encoder2: _Conv
     encoder3: _Conv
@@ -166,15 +176,14 @@ def _dice_coefficient(pred: torch.Tensor, target: torch.Tensor, smooth: int=1) -
         dice = (2 * intersection + smooth) / (union + smooth)
         dice_scores.append(dice)
 
-    return torch.mean(torch.stack(dice_scores)).item()
+    return torch.stack(dice_scores)
 
 
-def _multiclass_dice_loss(pred: torch.Tensor, target: torch.Tensor) -> float:
-    num_classes = pred.shape[1]
+def _multiclass_dice_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    dice_per_class = _dice_coefficient(pred, target)
+    dice_coef = dice_per_class.mean()
 
-    dice_coef = _dice_coefficient(pred, target)
-
-    return 1 - dice_coef / num_classes 
+    return 1 - dice_coef
 
 
 
@@ -189,53 +198,53 @@ class CustomWeightedLoss(nn.Module):
         self.class_weights = torch.tensor([0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float32, device=self.device)
         self.CELoss = nn.CrossEntropyLoss(weight=self.class_weights)
 
-    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> float:
+    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         ce_loss = self.CELoss(pred, target)
 
-        target_onehot = F.one_hot(target, num_classes=pred.shape[1])  # [B, H, W, C]
-        target_onehot = target_onehot.permute(0, 3, 1, 2).float()  # [B, C, H, W]
-
-        dice_loss = _multiclass_dice_loss(pred, target_onehot)
+        dice_loss = _multiclass_dice_loss(pred, target)
 
         return ce_loss + 2 * dice_loss
     
 
-# 모델 Test 함수
-def testing(model: OriginUNet, valDL: DataLoader, 
-            data_size: int, loss_fn: CustomWeightedLoss, 
+# 모델 Validate 함수
+def validating(model: SegmentationUNet, valDL: DataLoader, 
+            loss_fn: CustomWeightedLoss, 
             device: Literal["cpu", "cuda"]="cpu") -> Tuple[List, List]:
     # Dropout, BatchNorm 등 가중치 규제 비활성화
     model.eval()
 
-    loss_total, score_total = 0, 0
+    loss_total = 0
+    score_total = None
 
     with torch.no_grad():
         # Val DataLoader에 저장된 Feature, Target 텐서로 학습 진행
         for featureTS, targetTS in valDL:
             featureTS, targetTS = featureTS.to(device), targetTS.to(device)
-
-            batch_size = len(targetTS)
     
             pre_val = model(featureTS)
             
-            loss = loss_fn(pre_val, targetTS).to(device)
+            loss = loss_fn(pre_val, targetTS)
 
             # DICE Score 확인 (클래스 객체와 예측값의 면적 비교)
             score = _dice_coefficient(pre_val, targetTS)
 
-            loss_total += loss.item() * batch_size
-            score_total += score * batch_size
+            loss_total += loss.item() 
+            
+            if score_total is None:   
+                score_total = score
+            else:
+                score_total += score
 
-    avg_loss = loss_total / data_size
-    avg_score = score_total / data_size
+    avg_loss = loss_total / len(valDL)
+    avg_score = score_total / len(valDL)
 
     return avg_loss, avg_score
 
-
-def training(model: OriginUNet, trainDL: DataLoader, valDL: DataLoader, 
-             optimizer: optim.AdamW, epoch: int, 
-             data_size: int, val_data_size: int, loss_fn: CustomWeightedLoss,
-             scheduler: lr_scheduler.ReduceLROnPlateau, 
+# 모델 Train 함수
+def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader, 
+             optimizer: List, epoch: int, 
+             loss_fn: CustomWeightedLoss, scheduler: lr_scheduler.ReduceLROnPlateau, 
+             patience: int, threshold: float,
              device: Literal["cpu", "cuda"]="cpu") -> Tuple[List, List]:
     # 가중치 파일 저장 위치 정의
     SAVE_PATH = './saved_models'
@@ -243,10 +252,11 @@ def training(model: OriginUNet, trainDL: DataLoader, valDL: DataLoader,
 
     # Early Stopping을 위한 변수
     BREAK_CNT_LOSS = 0
-    LIMIT_VALUE = 50
 
     # Loss가 더 낮은 가중치 파일을 저장하기 위하여 Loss 로그를 담을 리스트
     LOSS_HISTORY, SCORE_HISTORY = [[], []], [[], []]
+
+    idx = 0
 
     for count in range(1, epoch  + 1):
         # GPU 환경에서 training과 testing을 반복하므로 eval 모드 -> train 모드로 전환
@@ -255,25 +265,28 @@ def training(model: OriginUNet, trainDL: DataLoader, valDL: DataLoader,
 
         SAVE_WEIGHT = os.path.join(SAVE_PATH, f"best_model_weights.pth")
 
-        loss_total, score_total = 0, 0
+        loss_total = 0
+        score_total = None
 
         # Train DataLoader에 저장된 Feature, Target 텐서로 학습 진행
         for featureTS, targetTS in trainDL:
             featureTS, targetTS = featureTS.to(device), targetTS.to(device)
 
-            batch_size = len(targetTS)
-
             # 결과 추론
             pre_val = model(featureTS)
 
             # 추론값으로 Loss값 계산
-            loss = loss_fn(pre_val, targetTS).to(device)
+            loss = loss_fn(pre_val, targetTS)
 
             # DICE Score 확인 (클래스 객체와 예측값의 면적 비교)
-            score = _dice_coefficient(pre_val, targetTS)
+            score = _dice_coefficient(pre_val, targetTS).detach()
 
-            loss_total += loss.item() * batch_size
-            score_total += score * batch_size
+            loss_total += loss.item()
+
+            if score_total is None:
+                score_total = score
+            else:
+                score_total += score
 
             # 이전 gradient 초기화
             optimizer.zero_grad()
@@ -285,26 +298,35 @@ def training(model: OriginUNet, trainDL: DataLoader, valDL: DataLoader,
             optimizer.step()
         
         # Val Loss, Score 계산
-        val_loss, val_score = testing(model, valDL, val_data_size, loss_fn, device)
+        val_loss, val_score = validating(model, valDL, loss_fn, device)
 
-        LOSS_HISTORY[0].append(loss_total / data_size)
-        SCORE_HISTORY[0].append(score_total / data_size)
+        LOSS_HISTORY[0].append(loss_total / len(trainDL))
+        SCORE_HISTORY[0].append(score_total / len(trainDL))
 
         LOSS_HISTORY[1].append(val_loss)
         SCORE_HISTORY[1].append(val_score)
 
-        print(f"[{count} / {epoch}]\n - TRAIN LOSS : {LOSS_HISTORY[0][-1]}")
-        print(f"- TRAIN DICE SCORE : {SCORE_HISTORY[0][-1]}")
+        print(f"[{count} / {epoch}]\n - TRAIN LOSS : {LOSS_HISTORY[0][-1]:.4f}")
 
-        print(f"\n - TEST LOSS : {LOSS_HISTORY[1][-1]}")
-        print(f"- TEST DICE SCORE : {SCORE_HISTORY[1][-1]}")
+        print(f"- TRAIN DICE SCORE : {SCORE_HISTORY[0][-1].mean():.4f}")
+        for idx, score in enumerate(SCORE_HISTORY[0][-1]):
+            print(f"- CLASS {idx} : {score.item():.4f}")
+
+        print(f"\n - VAL LOSS : {LOSS_HISTORY[1][-1]}")
+        
+        print(f"- VAL DICE SCORE : {SCORE_HISTORY[1][-1].mean():.4f}")
+        for idx, score in enumerate(SCORE_HISTORY[1][-1]):
+            print(f"- CLASS {idx} : {score.item():.4f}")
 
         # Val Score 결과로 스케줄러 업데이트
         scheduler.step(val_loss)
 
         # Early Stopping 구현
         if len(LOSS_HISTORY[1]) >= 2:
-            if LOSS_HISTORY[1][-1] >= LOSS_HISTORY[1][-2]: BREAK_CNT_LOSS += 1
+            if (LOSS_HISTORY[1][-2] - LOSS_HISTORY[1][-1]) < threshold: 
+                BREAK_CNT_LOSS += 1
+            
+            else: BREAK_CNT_LOSS = 0
         
         if len(LOSS_HISTORY[1]) == 1:
             torch.save(model.state_dict(), SAVE_WEIGHT)
@@ -312,9 +334,14 @@ def training(model: OriginUNet, trainDL: DataLoader, valDL: DataLoader,
         else:
             if LOSS_HISTORY[1][-1] < min(LOSS_HISTORY[1][:-1]):
                 torch.save(model.state_dict(), SAVE_WEIGHT)
+                idx = count - 1
 
-        if BREAK_CNT_LOSS > LIMIT_VALUE:
+        if BREAK_CNT_LOSS > patience:
             print(f"성능 및 손실 개선이 없어서 {count} EPOCH에 학습 중단")
             break
-    
+
+    print(f"\n\n최종 EPOCH : {idx + 1}")
+    print(f"최종 VAL LOSS : {LOSS_HISTORY[1][idx]}")
+    print(f"최종 VAL SCORE : {SCORE_HISTORY[1][idx]}")
+
     return LOSS_HISTORY, SCORE_HISTORY
