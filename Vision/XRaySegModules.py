@@ -256,7 +256,7 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
     # Loss가 더 낮은 가중치 파일을 저장하기 위하여 Loss 로그를 담을 리스트
     LOSS_HISTORY, SCORE_HISTORY = [[], []], [[], []]
 
-    idx = 0
+    best_idx = 0
 
     for count in range(1, epoch  + 1):
         # GPU 환경에서 training과 testing을 반복하므로 eval 모드 -> train 모드로 전환
@@ -306,7 +306,7 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
         LOSS_HISTORY[1].append(val_loss)
         SCORE_HISTORY[1].append(val_score)
 
-        print(f"[{count} / {epoch}]\n - TRAIN LOSS : {LOSS_HISTORY[0][-1]:.4f}")
+        print(f"\n\n[{count} / {epoch}]\n - TRAIN LOSS : {LOSS_HISTORY[0][-1]:.4f}")
 
         print(f"- TRAIN DICE SCORE : {SCORE_HISTORY[0][-1].mean():.4f}")
         for idx, score in enumerate(SCORE_HISTORY[0][-1]):
@@ -334,14 +334,14 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
         else:
             if LOSS_HISTORY[1][-1] < min(LOSS_HISTORY[1][:-1]):
                 torch.save(model.state_dict(), SAVE_WEIGHT)
-                idx = count - 1
+                best_idx = count - 1
 
         if BREAK_CNT_LOSS > patience:
             print(f"성능 및 손실 개선이 없어서 {count} EPOCH에 학습 중단")
             break
 
-    print(f"\n\n최종 EPOCH : {idx + 1}")
-    print(f"최종 VAL LOSS : {LOSS_HISTORY[1][idx]}")
-    print(f"최종 VAL SCORE : {SCORE_HISTORY[1][idx]}")
+    print(f"\n\n최종 EPOCH : {best_idx + 1}")
+    print(f"최종 VAL LOSS : {LOSS_HISTORY[1][best_idx]}")
+    print(f"최종 VAL SCORE : {SCORE_HISTORY[1][best_idx]}")
 
     return LOSS_HISTORY, SCORE_HISTORY

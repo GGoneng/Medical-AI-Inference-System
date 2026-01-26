@@ -9,7 +9,39 @@
 # - Computer Vision 분야의 U-Net 구조를 직접 구현 
 # - 검증 Cost를 줄이기 위하여 작은 해상도의 데이터셋에서 Optimizer 비교
 #
-# >> 성능
+# >> 성능 (Train Score는 데이터 노이즈 추가로 인한 감소로 에상)
+# - (Seed 7)
+# - Adam : 
+#   - Best Epoch : 36
+#   - Train Dice Score : 0.9192
+#   - Val Dice Score : 0.9659
+#
+# - RMSprop :
+#   - Best Epoch : 14
+#   - Train Dice Score : 0.9284
+#   - Val Dice Score : 0.9689
+#
+# - (Seed 8)
+# - Adam :     
+#   - Best Epoch : 35
+#   - Train Dice Score : 0.9161
+#   - Val Dice Score : 0.9649
+#
+# - RMSprop :
+#   - Best Epoch : 12    
+#   - Train Dice Score : 0.9210
+#   - Val Dice Score : 0.9654
+#
+# - (Seed 1)
+# - Adam :     
+#   - Best Epoch : 39
+#   - Train Dice Score : 0.9207
+#   - Val Dice Score : 0.9687
+#
+# - RMSprop :
+#   - Best Epoch : 12    
+#   - Train Dice Score : 0.9207
+#   - Val Dice Score : 0.9624
 #
 # -----------------------------------------------------------------------------------
 
@@ -30,7 +62,7 @@ from functools import reduce
 from XRaySegModules import *
 
 # 실험 조건 고정
-set_seed(7)
+set_seed(1)
 
 # 데이터 경로 설정
 TRAIN_DATA_DIR = "F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Train/Source_Data"
