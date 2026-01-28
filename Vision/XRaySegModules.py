@@ -15,6 +15,7 @@ import numpy as np
 import albumentations as A
 
 from typing import List, Optional, Tuple, Literal
+from TypeVariable import *
 
 import random
 
@@ -44,7 +45,7 @@ class XRayDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         img_path = self.img_path[idx]
         item = self.label[idx]
-
+        
         img = Image.open(img_path).convert('L')
         mask = Image.new('L', img.size, 0)
         draw = ImageDraw.Draw(mask)
@@ -190,11 +191,11 @@ def _multiclass_dice_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Ten
 
 
 class CustomWeightedLoss(nn.Module):
-    device: Literal["cpu", "cuda"]
+    device: DeviceType
     class_weights: torch.Tensor
     CELoss: nn.CrossEntropyLoss
 
-    def __init__(self, device: Literal["cpu", "cuda"]="cpu") -> None:
+    def __init__(self, device: DeviceType="cpu") -> None:
         super().__init__()
         self.device = device
         self.class_weights = torch.tensor([0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float32, device=self.device)
@@ -211,7 +212,7 @@ class CustomWeightedLoss(nn.Module):
 # 모델 Validate 함수
 def validating(model: SegmentationUNet, valDL: DataLoader, 
             loss_fn: CustomWeightedLoss, 
-            device: Literal["cpu", "cuda"]="cpu") -> Tuple[List, List]:
+            device: DeviceType="cpu") -> Tuple[List, List]:
     # Dropout, BatchNorm 등 가중치 규제 비활성화
     model.eval()
 
@@ -247,7 +248,7 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
              optimizer: List, epoch: int, 
              loss_fn: CustomWeightedLoss, scheduler: lr_scheduler.ReduceLROnPlateau, 
              patience: int, threshold: float,
-             device: Literal["cpu", "cuda"]="cpu") -> Tuple[List, List]:
+             device: DeviceType="cpu") -> Tuple[List, List]:
     # 가중치 파일 저장 위치 정의
     SAVE_PATH = './saved_models'
     os.makedirs(SAVE_PATH, exist_ok=True)
@@ -349,7 +350,7 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
     return LOSS_HISTORY, SCORE_HISTORY
 
 def testing(model: SegmentationUNet, weights: str, 
-            testDL: DataLoader, device: Literal["cpu", "cuda"]="cpu"):
+            testDL: DataLoader, device: DeviceType="cpu"):
 
     model.load_state_dict(torch.load(weights, map_location=torch.device(device), weights_only=True))
     model.eval()
@@ -374,8 +375,30 @@ def testing(model: SegmentationUNet, weights: str,
     return final_score
 
 
-def load_config(config_file):
-    with open(config_file, "r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
+def load_config(config_file: str) -> Dict(str, Any):
+    try:
+        with open(config_file, "r", encoding="utf-8") as file:
+            config = yaml.safe_load(file)
+            
+            return config
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Failed to load config file : {config_file}") from e
 
-    return config
+
+def load_model(model_name: str, num_classes: int,
+               device: DeviceType="cpu") -> nn.Module:
+    model_name = model_name.lower()
+    
+    model_dict = {
+        "segmentationunet": SegmentationUNet,
+    }
+
+    try:
+        model = model_dict[model_name](num_classes=num_classes).to(device)
+
+        return model
+    except KeyError as e:
+        raise KeyError(
+            f"Unknown Model : {model_name}\n"
+            f"Available Model List : {model_dict.keys()}"    
+        ) from e

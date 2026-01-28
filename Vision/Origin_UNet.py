@@ -54,4 +54,90 @@ for folder in os.listdir(TRAIN_LABEL_PATH):
     folder_list.append(os.path.join(TRAIN_LABEL_PATH, folder))
 
 for path in folder_list:
+    for file_name in os.listdir(path):
+        label_file_list.append(os.path.join(path, file_name))
+
+for file in label_file_list:
+    with open(file, "r", encoding="utf-8") as f:
+        label_list.append(json.load(f))
+
+
+# Validation 데이터 준비
+val_folder_list = []
+val_label_file_list = []
+val_label_list = []
+
+for folder in os.listdir(VAL_LABEL_PATH):
+    val_folder_list.append(os.path.join(VAL_LABEL_PATH, folder))
+
+for path in val_folder_list:
+    for file_name in os.listdir(path):
+        val_label_file_list.append(os.path.join(path, file_name))
+
+for file in val_label_file_list:
+    with open(file, "r", encoding="utf-8") as f:
+        val_label_list.append(json.load(f))
+
+
+# Test 데이터 준비
+test_folder_list = []
+test_label_file_list = []
+test_label_list = []
+
+for folder in os.listdir(TEST_LABEL_PATH):
+    test_folder_list.append(os.path.join(TEST_LABEL_PATH, folder))
+
+for path in test_folder_list:
+    for file_name in os.listdir(path):
+        test_label_file_list.append(os.path.join(path, file_name))
+
+for file in test_label_file_list:
+    with open(file, "r", encoding="utf-8") as f:
+        test_label_list.append(json.load(f))
+
+
+replace_dict = {"Labeling_Data": "Source_Data", ".json": ".png"}
+
+train_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in label_file_list]
+val_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in val_label_file_list]
+test_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in test_label_file_list]
+
+transform = A.Compose([
+    A.Resize(512, 512),
+    A.pytorch.ToTensorV2()
+])
+
+BATCH_SIZE = config["parameters"]["batch_size"]
+
+trainDS = XRayDataset(train_file_list, label_list, transform)
+trainDL = DataLoader(trainDS, batch_size=BATCH_SIZE, shuffle=True)
+
+valDS = XRayDataset(val_file_list, val_label_list, transform)
+valDL = DataLoader(valDS, batch_size=BATCH_SIZE)
+
+testDS = XRayDataset(test_file_list, test_label_list, transform)
+testDL = DataLoader(testDS, batch_size=BATCH_SIZE)
+
+SEED = config["parameters"]["seed"]
+EPOCH = config["parameters"]["epochs"]
+LR = config["parameters"]["learning_rate"]
+
+NUM_CLASSES = config["parameters"]["num_classes"]
+DEVICE = config["parameters"]["device"]
+
+PATIENCE = config["parameters"]["patience"]
+THRESHOLD = config["parameters"]["threshold"]
+
+optimizer = config["parameters"]["optimizer"].lower()
+
+model = config["model"].lower()
+loss = config["loss"].lower()
+
+if model == "segmentationunet":
+    model = SegmentationUNet(num_classes=NUM_CLASSES).to(DEVICE)
+else:
     
+
+if optimizer == "rmsprop":
+    optimizer = optim.RMSprop(model.parameters, lr=LR)
+
