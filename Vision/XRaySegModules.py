@@ -375,16 +375,13 @@ def testing(model: SegmentationUNet, weights: str,
     return final_score
 
 
-def load_config(config_file: str) -> Dict(str, Any):
-    try:
-        with open(config_file, "r", encoding="utf-8") as file:
-            config = yaml.safe_load(file)
-            
-            return config
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Failed to load config file : {config_file}") from e
-
-
+def load_config(config_file: str) -> Dict[str, Any]:
+    with open(config_file, "r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+        
+        return config
+        
+        
 def load_model(model_name: str, num_classes: int,
                device: DeviceType="cpu") -> nn.Module:
     model_name = model_name.lower()
@@ -393,12 +390,10 @@ def load_model(model_name: str, num_classes: int,
         "segmentationunet": SegmentationUNet,
     }
 
-    try:
-        model = model_dict[model_name](num_classes=num_classes).to(device)
+    if model_name not in model_dict:
+        raise ValueError(
+            f"\nUnknown Model : {model_name}\n"
+            f"Available Model List : {list(model_dict.keys())}"
+        )
 
-        return model
-    except KeyError as e:
-        raise KeyError(
-            f"Unknown Model : {model_name}\n"
-            f"Available Model List : {model_dict.keys()}"    
-        ) from e
+    return model_dict[model_name](num_classes=num_classes).to(device)

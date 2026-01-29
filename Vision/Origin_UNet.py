@@ -130,14 +130,5 @@ THRESHOLD = config["parameters"]["threshold"]
 
 optimizer = config["parameters"]["optimizer"].lower()
 
-model = config["model"].lower()
-loss = config["loss"].lower()
-
-if model == "segmentationunet":
-    model = SegmentationUNet(num_classes=NUM_CLASSES).to(DEVICE)
-else:
-    
-
-if optimizer == "rmsprop":
-    optimizer = optim.RMSprop(model.parameters, lr=LR)
+model = load_model("SegmentationUNe", 5, "cuda")
 
