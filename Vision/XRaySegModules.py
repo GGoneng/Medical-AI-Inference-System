@@ -14,7 +14,7 @@ import numpy as np
 
 import albumentations as A
 
-from typing import List, Optional, Tuple, Literal
+from typing import List, Optional, Tuple
 from TypeVariable import *
 
 import random
@@ -210,8 +210,8 @@ class CustomWeightedLoss(nn.Module):
     
 
 # 모델 Validate 함수
-def validating(model: SegmentationUNet, valDL: DataLoader, 
-            loss_fn: CustomWeightedLoss, 
+def validating(model: nn.Module, valDL: DataLoader, 
+            loss_fn: nn.Module, 
             device: DeviceType="cpu") -> Tuple[List, List]:
     # Dropout, BatchNorm 등 가중치 규제 비활성화
     model.eval()
@@ -243,10 +243,10 @@ def validating(model: SegmentationUNet, valDL: DataLoader,
 
     return avg_loss, avg_score
 
-# 모델 Train 함수
-def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader, 
+# 모델 training 함수
+def training(model: nn.Module, trainDL: DataLoader, valDL: DataLoader, 
              optimizer: List, epoch: int, 
-             loss_fn: CustomWeightedLoss, scheduler: lr_scheduler.ReduceLROnPlateau, 
+             loss_fn: nn.Module, scheduler: lr_scheduler.ReduceLROnPlateau, 
              patience: int, threshold: float,
              device: DeviceType="cpu") -> Tuple[List, List]:
     # 가중치 파일 저장 위치 정의
@@ -266,7 +266,7 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
         # testing에서는 train 모드 -> eval 모드
         model.train()
 
-        SAVE_WEIGHT = os.path.join(SAVE_PATH, f"best_model_weights.pth")
+        SAVE_WEIGHTS = os.path.join(SAVE_PATH, f"best_model_weights.pth")
 
         loss_total = 0
         score_total = None
@@ -332,11 +332,11 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
             else: BREAK_CNT_LOSS = 0
         
         if len(LOSS_HISTORY[1]) == 1:
-            torch.save(model.state_dict(), SAVE_WEIGHT)
+            torch.save(model.state_dict(), SAVE_WEIGHTS)
 
         else:
             if LOSS_HISTORY[1][-1] < min(LOSS_HISTORY[1][:-1]):
-                torch.save(model.state_dict(), SAVE_WEIGHT)
+                torch.save(model.state_dict(), SAVE_WEIGHTS)
                 best_idx = count - 1
 
         if BREAK_CNT_LOSS > patience:
@@ -347,9 +347,9 @@ def training(model: SegmentationUNet, trainDL: DataLoader, valDL: DataLoader,
     print(f"최종 VAL LOSS : {LOSS_HISTORY[1][best_idx]}")
     print(f"최종 VAL SCORE : {SCORE_HISTORY[1][best_idx]}")
 
-    return LOSS_HISTORY, SCORE_HISTORY
+    return LOSS_HISTORY, SCORE_HISTORY, SAVE_WEIGHTS
 
-def testing(model: SegmentationUNet, weights: str, 
+def testing(model: nn.Module, weights: str, 
             testDL: DataLoader, device: DeviceType="cpu"):
 
     model.load_state_dict(torch.load(weights, map_location=torch.device(device), weights_only=True))
@@ -370,9 +370,11 @@ def testing(model: SegmentationUNet, weights: str,
             else:
                 score_total += score
     
-    final_score = (score_total / len(testDL)).mean()
+    test_score = (score_total / len(testDL)).mean()
 
-    return final_score
+    print(f"\n\nTest Score : {test_score:.4f}")
+
+    return test_score
 
 
 def load_config(config_file: str) -> Dict[str, Any]:
@@ -380,7 +382,7 @@ def load_config(config_file: str) -> Dict[str, Any]:
         config = yaml.safe_load(file)
         
         return config
-        
+    
         
 def load_model(model_name: str, num_classes: int,
                device: DeviceType="cpu") -> nn.Module:
@@ -391,9 +393,25 @@ def load_model(model_name: str, num_classes: int,
     }
 
     if model_name not in model_dict:
-        raise ValueError(
-            f"\nUnknown Model : {model_name}\n"
-            f"Available Model List : {list(model_dict.keys())}"
+        raise KeyError(
+            f"Unknown Model : {model_name}"
         )
 
     return model_dict[model_name](num_classes=num_classes).to(device)
+
+
+def load_optimizer(optimizer_name: str, model: nn.Module, 
+                   lr: float) -> optim.Optimizer:
+    optimizer_name = optimizer_name.lower()
+
+    optimizer_dict = {
+        "adam": optim.Adam,
+        "rmsprop": optim.RMSprop
+    } 
+
+    if optimizer_name not in optimizer_dict:
+        raise KeyError(
+            f"Unknown Optimizer : {optimizer_name}"
+        )
+    
+    return optimizer_dict[optimizer_name](model.parameters(), lr=lr)

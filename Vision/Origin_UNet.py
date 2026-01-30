@@ -33,7 +33,18 @@ from XRaySegModules import *
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_PATH, "config.yaml")
 
-config = load_config(CONFIG_PATH)
+try:
+    config = load_config(CONFIG_PATH)
+
+except FileNotFoundError as e:
+    raise FileNotFoundError(
+        f"\nCheck an inputted config path."
+    ) from e
+
+except TypeError as e:
+    raise TypeError(
+        f"\nPath must be a string type."
+    ) from e
 
 # 데이터 경로 설정
 TRAIN_DATA_PATH = config["path"]["train"]["source"]
@@ -58,9 +69,19 @@ for path in folder_list:
         label_file_list.append(os.path.join(path, file_name))
 
 for file in label_file_list:
-    with open(file, "r", encoding="utf-8") as f:
-        label_list.append(json.load(f))
-
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            label_list.append(json.load(f))
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"\nCheck an inputted labeling data path."
+        )
+    
+    except TypeError as e:
+        raise TypeError(
+            f"\nPath must be a string type."
+        )
 
 # Validation 데이터 준비
 val_folder_list = []
@@ -75,8 +96,19 @@ for path in val_folder_list:
         val_label_file_list.append(os.path.join(path, file_name))
 
 for file in val_label_file_list:
-    with open(file, "r", encoding="utf-8") as f:
-        val_label_list.append(json.load(f))
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            val_label_list.append(json.load(f))
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"\nCheck an inputted labeling data path."
+        )
+    
+    except TypeError as e:
+        raise TypeError(
+            f"\nPath must be a string type."
+        )
 
 
 # Test 데이터 준비
@@ -92,9 +124,19 @@ for path in test_folder_list:
         test_label_file_list.append(os.path.join(path, file_name))
 
 for file in test_label_file_list:
-    with open(file, "r", encoding="utf-8") as f:
-        test_label_list.append(json.load(f))
-
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            test_label_list.append(json.load(f))
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"\nCheck an inputted labeling data path."
+        )
+    
+    except TypeError as e:
+        raise TypeError(
+            f"\nPath must be a string type."
+        )
 
 replace_dict = {"Labeling_Data": "Source_Data", ".json": ".png"}
 
@@ -102,8 +144,10 @@ train_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file
 val_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in val_label_file_list]
 test_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in test_label_file_list]
 
+IMG_SIZE = config["parameters"]["size"]
+
 transform = A.Compose([
-    A.Resize(512, 512),
+    A.Resize(IMG_SIZE, IMG_SIZE),
     A.pytorch.ToTensorV2()
 ])
 
@@ -125,10 +169,22 @@ LR = config["parameters"]["learning_rate"]
 NUM_CLASSES = config["parameters"]["num_classes"]
 DEVICE = config["parameters"]["device"]
 
+SCHEDULER_PATIENCE = config["parameters"]["scheduler_patience"]
 PATIENCE = config["parameters"]["patience"]
 THRESHOLD = config["parameters"]["threshold"]
 
-optimizer = config["parameters"]["optimizer"].lower()
+model_name = config["model"]
+model = load_model(model_name, NUM_CLASSES, DEVICE)
 
-model = load_model("SegmentationUNe", 5, "cuda")
+optimizer_name = config["parameters"]["optimizer"]
+optimizer = load_optimizer(optimizer_name, model, LR)
 
+loss_fn = CustomWeightedLoss(device=DEVICE)
+
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", SCHEDULER_PATIENCE)
+
+loss, score, weights_path = training(model=model, trainDL=trainDL, valDL=valDL, optimizer=optimizer,
+                       epoch=EPOCH, loss_fn=loss_fn, scheduler=scheduler,
+                       patience=PATIENCE, threshold=THRESHOLD, device=DEVICE)
+
+test_score = testing(model=model, weights=weights_path, testDL=testDL, device=DEVICE)

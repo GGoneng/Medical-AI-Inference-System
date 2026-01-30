@@ -23,5 +23,6 @@ parameters:
   num_classes: 5
   device: cuda
   optimizer: RMSprop
+  scheduler_patience: 3
   patience: 10
   threshold: 1e-3
