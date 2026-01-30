@@ -181,7 +181,7 @@ optimizer = load_optimizer(optimizer_name, model, LR)
 
 loss_fn = CustomWeightedLoss(device=DEVICE)
 
-scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", SCHEDULER_PATIENCE)
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=SCHEDULER_PATIENCE)
 
 loss, score, weights_path = training(model=model, trainDL=trainDL, valDL=valDL, optimizer=optimizer,
                        epoch=EPOCH, loss_fn=loss_fn, scheduler=scheduler,
