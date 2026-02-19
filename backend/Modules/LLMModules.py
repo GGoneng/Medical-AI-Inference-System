@@ -16,7 +16,7 @@ import asyncio
 # Internal Variables (do not call externally)
 # ----------------------------------------------------------
 
-_MODEL_NAME = "snuh/hari-q3-14b"
+_MODEL_NAME = "./Models/hari-q3-8b-awq"
 
 
 _llm = None
