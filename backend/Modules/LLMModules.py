@@ -9,38 +9,18 @@ from langchain_community.llms.vllm import VLLM
 
 import redis
 import pickle
-
+import os 
 import asyncio
 
 # ----------------------------------------------------------
 # Internal Variables (do not call externally)
 # ----------------------------------------------------------
 
-_MODEL_NAME = "./Models/hari-q3-8b-awq"
+_MODEL_NAME = "snuh/hari-q3-14b"
 
+_SEGMENTATION_MODELS_PATH = os.path.join(_BASE_PATH, "Models", _MODEL_NAME)
 
 _llm = None
-
-def load_model():
-    return VLLM(
-    model=_MODEL_NAME,
-    max_new_tokens=1024,
-    top_k=10,
-    top_p=0.95,
-    temperature=0.8,
-    tensor_parallel_size=1,
-    vllm_kwargs={
-        "gpu_memory_utilization": 0.7,
-        "quantization": "fp8"
-        }
-    )
-
-def get_llm():
-    global _llm
-    if _llm is None:
-        _llm = load_model()
-    return _llm
-
 
 _prompts = {
 "xray" : PromptTemplate(
@@ -98,13 +78,31 @@ template="""
 # Internal Functions (do not call externally)
 # ----------------------------------------------------------
 
+def _load_model():
+    return VLLM(
+    model=_SEGMENTATION_MODELS_PATH,
+    max_new_tokens=4096,
+    top_k=10,
+    top_p=0.95,
+    temperature=0.8,
+    tensor_parallel_size=1,
+    vllm_kwargs={
+        "gpu_memory_utilization": 0.7,
+        }
+    )
+
+def _get_llm():
+    global _llm
+    if _llm is None:
+        _llm = _load_model()
+    return _llm
 
 # ----------------------------------------------------------
 # External Functions (can be called from outside)
 # ----------------------------------------------------------
 
 async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
-    _llm = get_llm()
+    _llm = _get_llm()
 
     llm_data = pickle.loads(llm_memory.get(id))
     question = llm_data["inputs"][-1] if llm_data["inputs"] else None

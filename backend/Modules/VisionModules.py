@@ -27,6 +27,7 @@ from Modules.TypeVariable import *
 
 _BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _VISION_WEIGHTS_PATH = os.path.join(_BASE_PATH, "Weights", "vision_weights.pth")
+
 _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 _gpu_lock = threading.Lock()
@@ -178,11 +179,18 @@ def predict_vision(id: str, vision_memory: redis.Redis,
     img = Image.open(BytesIO(img)).convert("RGB")
 
     img_np = np.array(img, dtype=np.float32)
+
+    original_size = (img_np.shape[1], img_np.shape[0])
+    
     num_classes = 5
     
     with _gpu_lock:
         pred = _model_infer(img=img_np, num_classes=num_classes, weights=_VISION_WEIGHTS_PATH, device=_DEVICE)
         pred_np = pred.cpu().numpy()
+
+        pred_mask = Image.fromarray(pred_np.astype(np.uint8))
+        pred_mask = pred_mask.resize(original_size, Image.NEAREST)
+        pred_np = np.array(pred_mask)
 
     symptom_list = ["증상 없음", "유문협착증", "기복증", "공기액체층", "변비"]
     symptom_class = max(np.unique(pred_np))

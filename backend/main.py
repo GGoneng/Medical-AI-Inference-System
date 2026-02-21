@@ -54,7 +54,7 @@ async def upload(id: Optional[str] = Form(None),
                 file: Optional[UploadFile] = File(None), 
                 text: Optional[str] = Form(None),
                 background_tasks: BackgroundTasks = None) -> Dict[str, Any]:
-
+    
     if id is None:
         id = str(uuid4())
 
