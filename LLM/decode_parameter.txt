@@ -1,3 +1,12 @@
+최종 Parameter 선택:
+    Image Segmentation:
+        ===== Temperature: 0.1, Top-p: 1.0 =====
+    QA:
+        ===== Temperature: 0.5, Top-p: 0.8 =====  
+        or
+        ===== Temperature: 0.3, Top-p: 1.0 =====   
+        실제 테스트 후 확정
+
 ===== Temperature: 0.1, Top-p: 0.8 =====
 Image Segmentation:
     - 요로결석 부분 한자 출력
@@ -7,15 +16,89 @@ QA:
 ===== Temperature: 0.1, Top-p: 0.9 =====
 Image Segmentation:
     - 요로결석 부분 한자 출력
-QA:
-    - 좋음
+!QA:
+    - 좋음 / Image Segmentation과 크게 다르지 않은 답변 스타일, 오타나 의학 용어면에서는 흠잡을 곳이 없지만, Temperature가 큰 것에 비해 QA에서 진단을 폭넓게 내리는 느낌은 덜함
 
 ===== Temperature: 0.1, Top-p: 1.0 =====
-Image Segmentation:
-    - 공기액체층 -> 증 오타, 글자 깨짐, 답변 스타일은 깔끔함, 요로결석 부분 한자 출력 (제일 적음), 
+!Image Segmentation:
+    - 공기액체층 -> 증 오타, 글자 깨짐, 답변 스타일은 깔끔함, 요로결석 부분 한자 출력 (제일 적음) / 
+    Pneumoperitoneum (기복증/공기배증 을 공기액체증 이라고 표현), pleurodesis (흉막유착술을 흉막 세척이라고 표현), 요로결석 한자 표현 존재
+
+    - 의학 용어 번역 과정에서 약간의 불안정 존재 -> 헷갈리는 부분을 영어로 표현해줘서 의미는 알 수 있음
 QA:
     - 좋음
 
 ===== Temperature: 0.3, Top-p: 0.8 =====
 Image Segmentation:
     - 기복증 부분에 의문스러운 단어 존재, 답변 스타일은 깔끔, 중간엔 의도를 알 수 없는 단어, 요로결석 부분 한자 출력
+QA:
+    - Temperature 0.1 보다 좀 더 자연스러운 답변
+
+===== Temperature: 0.3, Top-p: 0.9 =====
+Image Segmentation:
+    - 의도를 알 수 없는 단어, 한자
+QA:
+    - 깔끔함
+
+===== Temperature: 0.3, Top-p: 1.0 =====    
+!Image Segmentation:
+    - 의료 용어인지 알 수 없는 단어가 있지만, 한자 X, 의학 용어가 매우 깔끔 / 
+    이 역시 의학용어 번역 과정에서 약간의 헷갈림이 존재하는 듯 함 (빈도가 좀 됨). 하지만, 프롬프트에서 잘못된 부분을 바로 잡고 재검사를 요청하는 점에서 우수함. 영어 단어를 한국어로 적을때 취약. 
+!QA:
+    - 오타 X, 이상한 단어 X / QA에서는 답변 스타일은 좀 딱딱하지만, 답변 성능 우수
+
+===== Temperature: 0.5, Top-p: 0.8 =====       
+Image Segmentation:
+    - 의료 용어에서 알 수 없는 단어, 글 끊김, 외국어
+!QA:
+    - 매우 깔끔, 답변 스타일이 진단을 내리는 것처럼 자연스러움 / 좋음
+
+===== Temperature: 0.5, Top-p: 0.9 =====
+Image Segmentation:
+    - 외국어, 한자
+QA:
+    - 말 뜻이 반대,     
+    
+===== Temperature: 0.5, Top-p: 1.0 =====
+Image Segmentation:
+    - 전문용어가 이상하게 쓰여있음
+QA:
+    - 진단이 상세하지 않음
+
+===== Temperature: 0.7, Top-p: 0.8 =====
+Image Segmentation:
+    - 한자
+QA: 
+    - 한자
+
+===== Temperature: 0.7, Top-p: 0.9 =====
+!Image Segmentation:
+    - 좋음, 의학 용어를 한국어로 적을때 살짝 어색 / 별로
+QA:
+    - 맹장염 못잡음
+
+===== Temperature: 0.7, Top-p: 1.0 =====
+Image Segmentation:
+    - 글자 끊김, 한자
+QA:
+    - 한자, 끊김
+
+Temperature 0.9부터는 답변 스타일이 자연스러움, 하지만 Instruction에 적힌 글자 수 제한을 어길때가 있음
+
+===== Temperature: 0.9, Top-p: 0.8 =====
+Image Segmentation:
+    - 외국어
+QA:
+    - 답변 스타일이 질문처럼 되게 자연스러움, 진단 가능성을 넓게 두지만 맹장염 의심을 못함, 영어 혼합
+
+===== Temperature: 0.9, Top-p: 0.9 =====
+Image Segmentation:
+    - 의학용어 오타, 글 끊김
+QA:
+    - 글 끊김, 
+
+===== Temperature: 0.9, Top-p: 1.0 =====
+Image Segmentation:
+    - 의미를 알 수 없는 단어 존재
+QA:
+    - 글 끊김
