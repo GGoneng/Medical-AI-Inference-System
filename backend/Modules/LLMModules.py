@@ -16,6 +16,7 @@ import asyncio
 # Internal Variables (do not call externally)
 # ----------------------------------------------------------
 
+_BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 _MODEL_NAME = "snuh/hari-q3-14b"
 
 _SEGMENTATION_MODELS_PATH = os.path.join(_BASE_PATH, "Models", _MODEL_NAME)
