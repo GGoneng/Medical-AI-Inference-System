@@ -51,10 +51,15 @@ services:
     image: vllm/vllm-openai:latest
     runtime: nvidia
     ports:
-      - "8000:8001"
+      - "8001:8000"
     volumes:
       - ./backend/Models:/models
     command: >
       --model /models/hari-q3-8b-awq
       --host 0.0.0.0
-      --port 8001
+      --port 8000
+      --gpu-memory-utilization 0.86
+      --max-model-len 1K
+      --max-num-seqs 1
+      --max-num-batched-tokens 1K
+      --enforce-eager

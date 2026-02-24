@@ -8,6 +8,8 @@ redis
 huggingface_hub
 langchain
 langchain-community
+langchain-core
+langchain-openai
 vllm
 autoawq
 optimum
