@@ -91,11 +91,13 @@ async def upload(id: Optional[str] = Form(None),
     img = await file.read()
 
     vision_data["inputs"].append(img)
-    background_tasks.add_task(predict_vision, id, vision_memory, llm_memory)
-    background_tasks.add_task(predict_llm, id, llm_memory)
 
     vision_memory.set(id, pickle.dumps(vision_data))
     llm_memory.set(id, pickle.dumps(llm_data))
+
+    background_tasks.add_task(predict_vision, id, vision_memory, llm_memory)
+    background_tasks.add_task(predict_llm, id, llm_memory)
+
 
     return {"id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
 

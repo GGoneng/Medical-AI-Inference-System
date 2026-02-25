@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 const Prediction = ({ id, setLoading }) => {
     const [outputs, setOutputs] = useState({ vision: [], llm: [] });
     const [animatedText, setAnimatedText] = useState("");
-    
+    const [lastLLM, setLastLLM] = useState("");
+
     const animateText = async (fullText) => {
         setAnimatedText("");
         for (let i = 0; i < fullText.length; i++) {
@@ -36,9 +37,14 @@ const Prediction = ({ id, setLoading }) => {
                 clearInterval(intervalId);
 
                 if (llmOut.length > 0) {
-                    animateText(llmOut.join("\n\n"));
-                };
+                    const newText = llmOut.join("\n\n");
 
+                    if (newText !== lastLLM) {
+                        setLastLLM(newText);
+                        animateText(newText);
+                    }
+                }
+                
             } catch (err) {
                 console.error("예측 실패 : ", err);
                 setLoading(false);
@@ -48,7 +54,7 @@ const Prediction = ({ id, setLoading }) => {
 
 
         fetchPrediction();
-        intervalId = setInterval(fetchPrediction, 5000);
+        intervalId = setInterval(fetchPrediction, 1000);
 
         return () => clearInterval(intervalId);
     }, [id, setLoading]);
