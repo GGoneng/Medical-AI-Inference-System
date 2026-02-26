@@ -1,25 +1,50 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import time
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Load tokenizer and model
-normal_model_name = "snuh/hari-q3-8b"
+def benchmark(model, tokenizer, messages):
 
-normal_model = AutoModelForCausalLM.from_pretrained(
-    normal_model_name,
-    load_in_4bit=True,
-    dtype="auto",
-    device_map="auto"
+    text = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True,
+    enable_thinking=True
 )
-normal_tokenizer = AutoTokenizer.from_pretrained(normal_model_name)
+    # tokenize
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
-awq_model_name = "./hari-q3-8b-awq"
+    torch.cuda.reset_peak_memory_stats()
 
-awq_model = AutoModelForCausalLM.from_pretrained(
-    awq_model_name,
-    dtype="auto",
-    device_map="auto"
-)
-awq_tokenizer = AutoTokenizer.from_pretrained(awq_model_name)
+    # start
+    start = time.time()
+
+    generated_ids = model.generate(
+        **inputs,
+        max_new_tokens=4096
+    )
+
+    end = time.time()
+
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+    # output token length
+    output_tokens = response.shape[0] - inputs.input_ids.shape[1]
+
+    # latency
+    latency = end - start
+
+    # tokens/sec
+    tok_per_sec = output_tokens / latency
+
+    # vram
+    vram = torch.cuda.max_memory_allocated() / 1024**3
+
+    return latency, tok_per_sec, vram, response
+
 
 prompt = '''
 ### Instruction:
@@ -34,58 +59,36 @@ prompt = '''
 가장 가능성이 높은 진단명은 무엇인가요?
 '''.strip()
 
-messages = [
-    {"role": "user", "content": prompt}
-]
-text = normal_tokenizer.apply_chat_template(
-    messages,
-    tokenize=False,
-    add_generation_prompt=True,
-    enable_thinking=True
+# -------- model 1 --------
+model1_name = "snuh/hari-q3-8b"
+model1 = AutoModelForCausalLM.from_pretrained(
+    model1_name,
+    load_in_4bit=True,
+    device_map="auto"
 )
-model_inputs = normal_tokenizer([text], return_tensors="pt").to(normal_model.device)
+tok1 = AutoTokenizer.from_pretrained(model1_name)
 
-t1 = time.time()
+lat, toksec, vram, response = benchmark(model1, tok1, prompt)
 
-generated_ids = normal_model.generate(
-    **model_inputs,
-    max_new_tokens=4096
+print("\n=== bitsandbytes 4bit ===")
+print(f"Latency: {lat:.3f}s")
+print(f"Tokens/sec: {toksec:.2f}")
+print(f"Peak VRAM: {vram:.2f} GB")
+print(f"Response: \n {response}")
+
+
+# -------- model 2 --------
+model2_name = "./hari-q3-8b-awq"
+model2 = AutoModelForCausalLM.from_pretrained(
+    model2_name,
+    device_map="auto"
 )
-generated_ids = [
-    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-]
+tok2 = AutoTokenizer.from_pretrained(model2_name)
 
-response = normal_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+lat, toksec, vram, response = benchmark(model2, tok2, prompt)
 
-t2 = time.time()
-
-print(response)
-print("Normal 4-bits hari-q3:")
-print(f"Response Time : {t2 - t1:.4f}")
-
-text = awq_tokenizer.apply_chat_template(
-    messages,
-    tokenize=False,
-    add_generation_prompt=True,
-    enable_thinking=True
-)
-
-model_inputs = awq_tokenizer([text], return_tensors="pt").to(awq_model.device)
-
-t1 = time.time()
-
-generated_ids = awq_model.generate(
-    **model_inputs,
-    max_new_tokens=4096
-)
-generated_ids = [
-    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-]
-
-response = awq_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-t2 = time.time()
-
-print(response)
-print("AWQ 4-bits hari-q3:")
-print(f"Response Time : {t2 - t1:.4f}")
+print("\n=== AWQ 4bit ===")
+print(f"Latency: {lat:.3f}s")
+print(f"Tokens/sec: {toksec:.2f}")
+print(f"Peak VRAM: {vram:.2f} GB")
+print(f"Response: \n {response}")
