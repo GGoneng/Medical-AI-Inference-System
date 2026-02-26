@@ -26,13 +26,13 @@ def benchmark(model, tokenizer, messages):
     end = time.time()
 
     generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
     ]
 
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
     # output token length
-    output_tokens = response.shape[0] - inputs.input_ids.shape[1]
+    output_tokens = generated_ids[0].shape[0]
 
     # latency
     latency = end - start
