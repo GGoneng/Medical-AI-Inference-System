@@ -1,6 +1,8 @@
 import time
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+# from awq import AutoAWQForCausalLM
+import os 
 
 def benchmark(model, tokenizer, messages):
 
@@ -8,7 +10,7 @@ def benchmark(model, tokenizer, messages):
     messages,
     tokenize=False,
     add_generation_prompt=True,
-    enable_thinking=True
+    enable_thinking=False
 )
     # tokenize
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
@@ -20,19 +22,19 @@ def benchmark(model, tokenizer, messages):
 
     generated_ids = model.generate(
         **inputs,
-        max_new_tokens=4096
+        max_new_tokens=512
     )
 
     end = time.time()
 
     generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
     ]
 
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
     # output token length
-    output_tokens = response.shape[0] - inputs.input_ids.shape[1]
+    output_tokens = generated_ids[0].shape[0]
 
     # latency
     latency = end - start
@@ -59,16 +61,20 @@ prompt = '''
 가장 가능성이 높은 진단명은 무엇인가요?
 '''.strip()
 
+messages = [
+    {"role": "user", "content": prompt}
+]
+
 # -------- model 1 --------
 model1_name = "snuh/hari-q3-8b"
 model1 = AutoModelForCausalLM.from_pretrained(
     model1_name,
     load_in_4bit=True,
-    device_map="auto"
+    device_map="cuda"
 )
 tok1 = AutoTokenizer.from_pretrained(model1_name)
 
-lat, toksec, vram, response = benchmark(model1, tok1, prompt)
+lat, toksec, vram, response = benchmark(model1, tok1, messages)
 
 print("\n=== bitsandbytes 4bit ===")
 print(f"Latency: {lat:.3f}s")
@@ -76,19 +82,25 @@ print(f"Tokens/sec: {toksec:.2f}")
 print(f"Peak VRAM: {vram:.2f} GB")
 print(f"Response: \n {response}")
 
+# del model1
+# del tok1
 
-# -------- model 2 --------
-model2_name = "./hari-q3-8b-awq"
-model2 = AutoModelForCausalLM.from_pretrained(
-    model2_name,
-    device_map="auto"
-)
-tok2 = AutoTokenizer.from_pretrained(model2_name)
+# torch.cuda.empty_cache()
 
-lat, toksec, vram, response = benchmark(model2, tok2, prompt)
+# # -------- model 2 --------
+# BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-print("\n=== AWQ 4bit ===")
-print(f"Latency: {lat:.3f}s")
-print(f"Tokens/sec: {toksec:.2f}")
-print(f"Peak VRAM: {vram:.2f} GB")
-print(f"Response: \n {response}")
+# model2_name = os.path.join(BASE_PATH, "hari-q3-8b-awq")
+# model2 = AutoModelForCausalLM.from_pretrained(
+#     model2_name,
+#     device_map="cuda"
+# )
+# tok2 = AutoTokenizer.from_pretrained(model2_name)
+
+# lat, toksec, vram, response = benchmark(model2, tok2, messages)
+
+# print("\n=== AWQ 4bit ===")
+# print(f"Latency: {lat:.3f}s")
+# print(f"Tokens/sec: {toksec:.2f}")
+# print(f"Peak VRAM: {vram:.2f} GB")
+# print(f"Response: \n {response}")
