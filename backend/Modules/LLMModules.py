@@ -98,20 +98,15 @@ def _build_messages(question: str):
 
 async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
     llm_data = pickle.loads(llm_memory.get(id))
-    
     question = llm_data["inputs"][-1] if llm_data["inputs"] else None
     symptom = llm_data["symptom"][-1] if llm_data["symptom"] else None
 
     if symptom:
         messages = _build_messages(symptom)
-        llm.temperature = 0.1
-        llm.top_p = 1.0
-    
+        
     elif question:
         messages = _build_messages(question)
-        llm.temperature = 0.5
-        llm.top_p = 0.8
-
+    
     else:
         return {"id": id, "llm_result": "Text Data가 없습니다."}
     
@@ -119,7 +114,7 @@ async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
 
     result = await llm.ainvoke(prompt_builder.build(messages))
 
-    llm_data["outputs"].append(result.content)
+    llm_data["outputs"].append(result["content"])
     llm_memory.set(id, pickle.dumps(llm_data))
 
     print(result)
