@@ -52,8 +52,8 @@ llm_memory = redis.Redis(host=os.getenv("REDIS_HOST", "localhost"), port=6379, d
 @app.post("/upload")
 async def upload(id: Optional[str] = Form(None),
                 file: Optional[UploadFile] = File(None), 
-                text: Optional[str] = Form(None),
-                background_tasks: BackgroundTasks = None) -> Dict[str, Any]:
+                text: Optional[str] = Form(None)
+                ) -> Dict[str, Any]:
     
     if id is None:
         id = str(uuid4())
@@ -95,9 +95,8 @@ async def upload(id: Optional[str] = Form(None),
     vision_memory.set(id, pickle.dumps(vision_data))
     llm_memory.set(id, pickle.dumps(llm_data))
 
-    background_tasks.add_task(predict_vision, id, vision_memory, llm_memory)
-    background_tasks.add_task(predict_llm, id, llm_memory)
-
+    await predict_vision(id, vision_memory, llm_memory)
+    await predict_llm(id, llm_memory)
 
     return {"id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
 
@@ -117,7 +116,7 @@ def get_vision_output(id: str) -> VisionOutputType:
 
 @app.get("/llmOutputs/{id}")
 def get_llm_output(id: str):
-    time.sleep(3)
+
     data = pickle.loads(llm_memory.get(id))
 
     if not data:

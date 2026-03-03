@@ -1,26 +1,30 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 
 const Prediction = ({ id, setLoading }) => {
     const [outputs, setOutputs] = useState({ vision: [], llm: [] });
-    const [animatedText, setAnimatedText] = useState("");
-    const [lastLLM, setLastLLM] = useState("");
+    const [animatedText, setAnimatedText] = useState(null);
+    const lastLLMRef = useRef(null);
+    const pollingRef = useRef(true);
 
     const animateText = async (fullText) => {
         setAnimatedText("");
         for (let i = 0; i < fullText.length; i++) {
             setAnimatedText((prev) => prev + fullText[i]);
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            await new Promise((resolve) => setTimeout(resolve, 10));
         }
     };
 
     useEffect(() => {
         if (!id) return;
 
-        let intervalId;
+        pollingRef.current = true;
         setLoading(true);
 
         const fetchPrediction = async () => {
+            if (!pollingRef.current) return;
+
             try {
                 const [visionRes, llmRes] = await Promise.all([
                     axios.get(`http://localhost:8000/visionOutputs/${id}`),
@@ -30,38 +34,41 @@ const Prediction = ({ id, setLoading }) => {
                 const visionOut = visionRes.data.outputs || [];
                 const llmOut = llmRes.data.outputs || [];
 
-                if (visionOut.length === 0 && llmOut.length === 0) return;
+                if (visionOut.length === 0 && llmOut.length === 0) {
+                    setTimeout(fetchPrediction, 1000); // 다음 요청 예약
+                    return;
+                }
 
                 setOutputs({ vision: visionOut, llm: llmOut });
                 setLoading(false);
-                clearInterval(intervalId);
+                pollingRef.current = false; // polling 중단
 
                 if (llmOut.length > 0) {
                     const newText = llmOut.join("\n\n");
 
-                    if (newText !== lastLLM) {
-                        setLastLLM(newText);
+                    if (newText !== lastLLMRef.current) {
+                        lastLLMRef.current = newText;
                         animateText(newText);
                     }
                 }
-                
+
             } catch (err) {
                 console.error("예측 실패 : ", err);
                 setLoading(false);
-                clearInterval(intervalId);
+                pollingRef.current = false;
             }
         };
 
-
         fetchPrediction();
-        intervalId = setInterval(fetchPrediction, 1000);
 
-        return () => clearInterval(intervalId);
+        return () => {
+            pollingRef.current = false;
+        };
     }, [id, setLoading]);
 
     if (!outputs.vision.length && !outputs.llm.length && !animatedText) return null;
 
-    return (    
+    return (
         <div className="relative flex flex-col justify-center items-center mt-20 rounded-[28px] shadow-preview w-[550px] min-h-[550px] p-4">
             {outputs.vision.length > 0 && (
                 <div className="flex justify-center items-center mb-5">
@@ -78,7 +85,7 @@ const Prediction = ({ id, setLoading }) => {
 
             {(animatedText || outputs.llm.length > 0) && (
                 <div className="p-5 text-left whitespace-pre-wrap w-full border-t border-gray-300 overflow-y-auto">
-                    <p>{animatedText}</p>
+                    <ReactMarkdown>{animatedText ?? ""}</ReactMarkdown>
                 </div>
             )}
         </div>

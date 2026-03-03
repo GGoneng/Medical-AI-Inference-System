@@ -171,7 +171,7 @@ def _model_infer(img: np.ndarray, num_classes: int,
 # External Functions (can be called from outside)
 # ----------------------------------------------------------
 
-def predict_vision(id: str, vision_memory: redis.Redis, 
+async def predict_vision(id: str, vision_memory: redis.Redis, 
                    llm_memory: redis.Redis) -> ResponseType:
     
     vision_data = pickle.loads(vision_memory.get(id))
