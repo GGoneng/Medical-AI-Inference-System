@@ -91,6 +91,7 @@ async def upload(id: Optional[str] = Form(None),
     img = await file.read()
 
     vision_data["inputs"].append(img)
+    llm_data["inputs"].append(text)
 
     vision_memory.set(id, pickle.dumps(vision_data))
     llm_memory.set(id, pickle.dumps(llm_data))
