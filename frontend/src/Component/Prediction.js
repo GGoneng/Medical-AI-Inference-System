@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const Prediction = ({ id, setLoading }) => {
     const [outputs, setOutputs] = useState({ vision: [], llm: [] });
@@ -11,7 +11,7 @@ const Prediction = ({ id, setLoading }) => {
         setAnimatedText("");
         for (let i = 0; i < fullText.length; i++) {
             setAnimatedText((prev) => prev + fullText[i]);
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            await new Promise((resolve) => setTimeout(resolve, 10));
         }
     };
 
@@ -33,14 +33,11 @@ const Prediction = ({ id, setLoading }) => {
                 const visionOut = visionRes.data.outputs || [];
                 const llmOut = llmRes.data.outputs || [];
 
-                if (visionOut.length === 0 && llmOut.length === 0) {
-                    setTimeout(fetchPrediction, 1000);
-                    return;
-                }
+                if (visionOut.length === 0 && llmOut.length === 0) return;
 
                 setOutputs({ vision: visionOut, llm: llmOut });
                 setLoading(false);
-                pollingRef.current = false; 
+                clearInterval(intervalId);
 
                 if (llmOut.length > 0) {
                     const newText = llmOut.join("\n\n");
@@ -84,7 +81,7 @@ const Prediction = ({ id, setLoading }) => {
 
             {(animatedText || outputs.llm.length > 0) && (
                 <div className="p-5 text-left whitespace-pre-wrap w-full border-t border-gray-300 overflow-y-auto">
-                    <p>{animatedText}</p>
+                    <ReactMarkdown>{animatedText ?? ""}</ReactMarkdown>
                 </div>
             )}
         </div>

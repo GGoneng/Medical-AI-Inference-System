@@ -76,13 +76,12 @@ def _build_messages(question: str):
     return [
         {
             "role": "system",
-            "content": ('''
+            "content": '''
                 당신은 임상 지식을 갖춘 유능하고 신뢰할 수 있는 한국어 기반 의료 어시스턴트입니다.
                 사용자의 질문에 대해 정확하고 신중한 임상 추론을 바탕으로 진단 가능성을 제시해 주세요.
                 반드시 환자의 연령, 증상, 검사 결과, 통증 부위 등 모든 단서를 종합적으로 고려하여 추론 과정과 진단명을 제시해야 합니다.
                 의학적으로 정확한 용어를 사용하되, 필요하다면 일반인이 이해하기 쉬운 용어도 병행해 최대 200 토큰으로 설명해 주세요.
-            '''
-            )
+            '''.strip()
         },
         {
             "role": "user",
@@ -103,10 +102,14 @@ async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
 
     if symptom:
         messages = _build_messages(symptom)
-        
+        llm.temperature = 0.1
+        llm.top_p = 1.0
+    
     elif question:
         messages = _build_messages(question)
-    
+        llm.temperature = 0.5
+        llm.top_p = 0.8
+
     else:
         return {"id": id, "llm_result": "Text Data가 없습니다."}
     
