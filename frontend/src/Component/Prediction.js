@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 const Prediction = ({ id, setLoading }) => {
     const [outputs, setOutputs] = useState({ vision: [], llm: [] });
@@ -37,7 +38,6 @@ const Prediction = ({ id, setLoading }) => {
 
                 setOutputs({ vision: visionOut, llm: llmOut });
                 setLoading(false);
-                clearInterval(intervalId);
 
                 if (llmOut.length > 0) {
                     const newText = llmOut.join("\n\n");

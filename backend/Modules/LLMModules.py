@@ -117,7 +117,7 @@ async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
 
     result = await llm.ainvoke(prompt_builder.build(messages))
 
-    llm_data["outputs"].append(result["content"])
+    llm_data["outputs"].append(result.content)
     llm_memory.set(id, pickle.dumps(llm_data))
 
     print(result)
