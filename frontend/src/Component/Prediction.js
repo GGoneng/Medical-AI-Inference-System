@@ -11,7 +11,7 @@ const Prediction = ({ id, setLoading }) => {
         setAnimatedText("");
         for (let i = 0; i < fullText.length; i++) {
             setAnimatedText((prev) => prev + fullText[i]);
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 20));
         }
     };
 
