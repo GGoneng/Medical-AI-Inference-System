@@ -175,55 +175,61 @@ async def predict_vision(id: str, vision_memory: redis.Redis,
                    llm_memory: redis.Redis) -> ResponseType:
     
     vision_data = pickle.loads(vision_memory.get(id))
-    img = vision_data["inputs"][-1]
-    img = Image.open(BytesIO(img)).convert("RGB")
+    print(vision_data["inputs"][-1])
 
-    img_np = np.array(img, dtype=np.float32)
-
-    original_size = (img_np.shape[1], img_np.shape[0])
+    if vision_data["inputs"] :
+        pass
     
-    num_classes = 5
-    
-    with _gpu_lock:
-        pred = _model_infer(img=img_np, num_classes=num_classes, weights=_VISION_WEIGHTS_PATH, device=_DEVICE)
-        pred_np = pred.cpu().numpy()
+    else:
+        img = vision_data["inputs"][-1]
+        img = Image.open(BytesIO(img)).convert("RGB")
 
-        pred_mask = Image.fromarray(pred_np.astype(np.uint8))
-        pred_mask = pred_mask.resize(original_size, Image.NEAREST)
-        pred_np = np.array(pred_mask)
+        img_np = np.array(img, dtype=np.float32)
 
-    symptom_list = ["증상 없음", "유문협착증", "기복증", "공기액체층", "변비"]
-    symptom_class = max(np.unique(pred_np))
+        original_size = (img_np.shape[1], img_np.shape[0])
+        
+        num_classes = 5
+        
+        with _gpu_lock:
+            pred = _model_infer(img=img_np, num_classes=num_classes, weights=_VISION_WEIGHTS_PATH, device=_DEVICE)
+            pred_np = pred.cpu().numpy()
 
-    symptom = symptom_list[symptom_class]
+            pred_mask = Image.fromarray(pred_np.astype(np.uint8))
+            pred_mask = pred_mask.resize(original_size, Image.NEAREST)
+            pred_np = np.array(pred_mask)
 
-    llm_data = pickle.loads(llm_memory.get(id))
-    llm_data["symptom"].append(symptom)
+        symptom_list = ["증상 없음", "유문협착증", "기복증", "공기액체층", "변비"]
+        symptom_class = max(np.unique(pred_np))
 
-    palette = np.array([
-        [0, 0, 0],        # class 0 → black
-        [255, 0, 0],      # class 1 → red
-        [0, 255, 0],      # class 2 → green
-        [0, 0, 255],      # class 3 → blue
-        [255, 255, 0],    # class 4 → yellow
-    ], dtype=np.uint8)
+        symptom = symptom_list[symptom_class]
 
-    color_mask = palette[pred_np] 
-    color_mask = color_mask.astype(np.float32)
+        llm_data = pickle.loads(llm_memory.get(id))
+        llm_data["symptom"].append(symptom)
 
-    blend_ratio = 0.3  # 투명도 (0.0~1.0)
-    pred_img = (img_np * (1 - blend_ratio) + color_mask * blend_ratio).astype(np.uint8)
+        palette = np.array([
+            [0, 0, 0],        # class 0 → black
+            [255, 0, 0],      # class 1 → red
+            [0, 255, 0],      # class 2 → green
+            [0, 0, 255],      # class 3 → blue
+            [255, 255, 0],    # class 4 → yellow
+        ], dtype=np.uint8)
 
-    buffer = BytesIO()
-    Image.fromarray(pred_img).save(buffer, format="PNG")
-    base64_img = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        color_mask = palette[pred_np] 
+        color_mask = color_mask.astype(np.float32)
 
-    vision_data["outputs"].append(base64_img)
+        blend_ratio = 0.3  # 투명도 (0.0~1.0)
+        pred_img = (img_np * (1 - blend_ratio) + color_mask * blend_ratio).astype(np.uint8)
 
-    vision_memory.set(id, pickle.dumps(vision_data))
-    llm_memory.set(id, pickle.dumps(llm_data))
+        buffer = BytesIO()
+        Image.fromarray(pred_img).save(buffer, format="PNG")
+        base64_img = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-    result_path = os.path.join(_BASE_PATH, "result.png")
-    Image.fromarray(pred_img).save(result_path)
+        vision_data["outputs"].append(base64_img)
 
-    return {"id": id, "vision_result": "redis 저장 성공"}
+        vision_memory.set(id, pickle.dumps(vision_data))
+        llm_memory.set(id, pickle.dumps(llm_data))
+
+        result_path = os.path.join(_BASE_PATH, "result.png")
+        Image.fromarray(pred_img).save(result_path)
+
+        return {"id": id, "vision_result": "redis 저장 성공"}
