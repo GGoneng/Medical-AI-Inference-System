@@ -99,12 +99,22 @@ def _build_messages(question: str):
 # ----------------------------------------------------------
 
 async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
-    llm_data = pickle.loads(llm_memory.get(id))
-    print(llm_data)
+    raw_data = llm_memory.get(id)
 
-    question = llm_data["inputs"][-1] if llm_data["inputs"] else None
-    symptom = llm_data["symptom"][-1] if llm_data["symptom"] else None
+    if raw_data is None:
+        return {"id": id, "llm_result": "데이터 없음"}
 
+    try:
+        llm_data = pickle.loads(raw_data)
+    except Exception:
+        return {"id": id, "llm_result": "데이터 로드 실패"}
+
+    question = llm_data.get("inputs", [])
+    symptom = llm_data.get("symptom", [])
+
+    question = question[-1] if question else None
+    symptom = symptom[-1] if symptom else None
+    
     if symptom:
         messages = _build_messages(symptom)
         llm.temperature = 0.1
