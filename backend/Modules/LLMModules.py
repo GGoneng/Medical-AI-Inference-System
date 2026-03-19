@@ -100,6 +100,8 @@ def _build_messages(question: str):
 
 async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
     llm_data = pickle.loads(llm_memory.get(id))
+    print(llm_data)
+
     question = llm_data["inputs"][-1] if llm_data["inputs"] else None
     symptom = llm_data["symptom"][-1] if llm_data["symptom"] else None
 
