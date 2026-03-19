@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 import redis
 import pickle
 import os 
-import asyncio
+import re
 
 # ----------------------------------------------------------
 # Internal Variables (do not call externally)
@@ -72,6 +72,9 @@ class PromptBuilder:
 # Internal Functions (do not call externally)
 # ----------------------------------------------------------
 
+def _remove_think(text: str):
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
 def _build_messages(question: str):
     return [
         {
@@ -109,8 +112,8 @@ async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
     
     elif question:
         messages = _build_messages(question)
-        llm.temperature = 0.5
-        llm.top_p = 0.8
+        llm.temperature = 0.3
+        llm.top_p = 1.0
 
     else:
         return {"id": id, "llm_result": "Text Data가 없습니다."}
@@ -119,7 +122,7 @@ async def predict_llm(id: str, llm_memory: redis.Redis) -> ResponseType:
 
     result = await llm.ainvoke(prompt_builder.build(messages))
 
-    llm_data["outputs"].append(result.content)
+    llm_data["outputs"].append(_remove_think(result.content))
     llm_memory.set(id, pickle.dumps(llm_data))
 
     print(result)
