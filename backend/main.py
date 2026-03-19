@@ -102,7 +102,7 @@ async def upload(id: Optional[str] = Form(None),
     return {"id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
 
 @app.get("/visionOutputs/{id}")
-def get_vision_output(id: str) -> VisionOutputType:
+def get_vision_output(id: str) -> OutputType:
     time.sleep(3)
     data = pickle.loads(vision_memory.get(id))
 
@@ -116,7 +116,7 @@ def get_vision_output(id: str) -> VisionOutputType:
     return {"outputs": [latest_output or ""]}
 
 @app.get("/llmOutputs/{id}")
-def get_llm_output(id: str):
+def get_llm_output(id: str) -> OutputType:
 
     data = pickle.loads(llm_memory.get(id))
 

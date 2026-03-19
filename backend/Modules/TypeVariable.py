@@ -11,4 +11,4 @@ from typing import Literal, Dict, Any, List
 
 DeviceType = Literal["cpu", "cuda"]
 ResponseType = Dict[str, Any]
-VisionOutputType = Dict[str, List[str]]
+OutputType = Dict[str, List[str]]
