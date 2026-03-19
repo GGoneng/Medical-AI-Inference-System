@@ -175,9 +175,8 @@ async def predict_vision(id: str, vision_memory: redis.Redis,
                    llm_memory: redis.Redis) -> ResponseType:
     
     vision_data = pickle.loads(vision_memory.get(id))
-    print(vision_data["inputs"][-1])
 
-    if vision_data["inputs"] :
+    if not vision_data["inputs"][-1]:
         pass
     
     else:
