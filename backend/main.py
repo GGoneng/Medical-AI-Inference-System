@@ -55,41 +55,56 @@ async def upload(id: Optional[str] = Form(None),
                 text: Optional[str] = Form(None)
                 ) -> Dict[str, Any]:
     
+    # ID 및 Data Load 동작 처리
     if id is None:
         id = str(uuid4())
 
     vision_data = vision_memory.get(id)
     llm_data = llm_memory.get(id)
-    
-    if vision_data:
-        vision_data = pickle.loads(vision_data)
-    else:
+
+    try:
+        vision_data = pickle.loads(vision_data) if vision_data else {}
+    except Exception:
         vision_data = {}
 
-    if llm_data:
-        llm_data = pickle.loads(llm_data)
-    else:
+    try:
+        llm_data = pickle.loads(llm_data) if llm_data else {}
+    except Exception:
         llm_data = {}
 
 
-    if "inputs" not in vision_data:
+    # Redis Dictionary 동작 처리
+    if not isinstance(vision_data.get("inputs"), list):
         vision_data["inputs"] = []
-    
-    if "outputs" not in vision_data:
+
+    if not isinstance(vision_data.get("outputs"), list):
         vision_data["outputs"] = []
 
-    if "inputs" not in llm_data:
+    if not isinstance(llm_data.get("inputs"), list):
         llm_data["inputs"] = []
 
-    if "outputs" not in llm_data:
+    if not isinstance(llm_data.get("outputs"), list):
         llm_data["outputs"] = []
 
-    if "symptom" not in llm_data:
+    if not isinstance(llm_data.get("symptom"), list):
         llm_data["symptom"] = []
+
+
+    # Image File 동작 처리
+    if file is None:
+        return {"success": False, "id": id, "message": "파일 존재하지 않음"}
+
+    try:
+        img = await file.read()
+    except Exception as e:
+        print(f"파일 읽기 실패: {e}")
+
+        return {"success": False, "id": id, "message": "파일 읽기 실패"}
+
+    if not img:
+        return {"success": False, "id": id, "message": "빈 파일"}
     
-
-    img = await file.read()
-
+    
     vision_data["inputs"].append(img)
     llm_data["inputs"].append(text)
 
@@ -99,7 +114,7 @@ async def upload(id: Optional[str] = Form(None),
     await predict_vision(id, vision_memory, llm_memory)
     await predict_llm(id, llm_memory)
 
-    return {"id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
+    return {"success": True, "id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
 
 @app.get("/visionOutputs/{id}")
 def get_vision_output(id: str) -> OutputType:

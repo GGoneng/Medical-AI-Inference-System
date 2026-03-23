@@ -174,8 +174,17 @@ def _model_infer(img: np.ndarray, num_classes: int,
 async def predict_vision(id: str, vision_memory: redis.Redis, 
                    llm_memory: redis.Redis) -> ResponseType:
     
-    vision_data = pickle.loads(vision_memory.get(id))
+    raw_data = vision_memory.get(id)
 
+    if raw_data is None:
+        return {"id": id, "vision_result": "데이터 없음"}
+    
+    try:
+        vision_data = pickle.loads(raw_data)
+    except Exception:
+        return {"id": id, "vision_result": "데이터 로드 실패"}
+
+    
     if not vision_data["inputs"][-1]:
         pass
     
