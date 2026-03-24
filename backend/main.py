@@ -59,13 +59,8 @@ async def upload(id: Optional[str] = Form(None),
     if id is None:
         id = str(uuid4())
 
-    try:
-        vision_data = vision_memory.get(id)
-        llm_data = llm_memory.get(id)
-    except Exception as e:
-        print(f"Redis 서버 오류: {e}")
-
-        return {"success": False, "id": id, "message": "Redis 서버 오류"}
+    vision_data = vision_memory.get(id)
+    llm_data = llm_memory.get(id)
 
     try:
         vision_data = pickle.loads(vision_data) if vision_data else {}
@@ -113,24 +108,11 @@ async def upload(id: Optional[str] = Form(None),
     vision_data["inputs"].append(img)
     llm_data["inputs"].append(text)
 
-    try:
-        vision_memory.set(id, pickle.dumps(vision_data))
-        llm_memory.set(id, pickle.dumps(llm_data))
-    except Exception as e:
-        print(f"Redis 저장 실패: {e}")
+    vision_memory.set(id, pickle.dumps(vision_data))
+    llm_memory.set(id, pickle.dumps(llm_data))
 
-        return {"success": False, "id": id, "message": "Redis 저장 실패"}
-
-    try:
-        await predict_vision(id, vision_memory, llm_memory)
-        await predict_llm(id, llm_memory)
-    except Exception as e:
-        print(f"모델 예측 실패: {e}")
-        
-        vision_memory.delete(id)
-        llm_memory.delete(id)
-
-        return {"success": False, "id": id, "message": "모델 예측 실패"}
+    await predict_vision(id, vision_memory, llm_memory)
+    await predict_llm(id, llm_memory)
 
     return {"success": True, "id": id, "file": file.filename, "prompt": text, "message": "업로드 성공!"}
 
