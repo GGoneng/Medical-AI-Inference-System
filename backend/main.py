@@ -136,7 +136,6 @@ async def upload(id: Optional[str] = Form(None),
 
 @app.get("/visionOutputs/{id}")
 def get_vision_output(id: str) -> OutputType:
-
     data = pickle.loads(vision_memory.get(id))
 
     if not data:
