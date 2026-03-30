@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   backend:
-    image: minha512/ai-doctor_backend:latest
+    image: minha512/ai-doctor-backend-deployment-server:latest
     container_name: ai-doctor_backend_service
     volumes:
       - /data/Weights:/back/Weights
@@ -23,7 +23,7 @@ services:
             - capabilities: [gpu]
 
   frontend:
-    image: minha512/ai-doctor_frontend:latest
+    image: minha512/ai-doctor-frontend-deployment-server:latest
     container_name: ai-doctor_frontend_service
     restart: unless-stopped
     ports:
