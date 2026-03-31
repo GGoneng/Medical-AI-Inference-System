@@ -12,6 +12,7 @@ const App = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false); 
   const [id, setID] = useState(null);
+  const BASE_URL = process.env.REACT_APP_API_URL;
 
   return (
     <div className="min-h-full h-auto">
@@ -24,7 +25,7 @@ const App = () => {
       <main className="flex flex-col items-center">
         <div>
           {loading && <Loading />}
-          {id && <Prediction id={id} setLoading={setLoading} />}
+          {id && <Prediction id={id} setLoading={setLoading} url={BASE_URL} />}
           {!id && !loading && (
             file ? <Preview file={file} setFile={setFile} /> : <Insert setFile={setFile} />
           )}
@@ -34,7 +35,7 @@ const App = () => {
           <div className="flex flex-col">
             <div>
               <Chat file={file} setFile={setFile} setLoading={setLoading} 
-              id={id} setID={setID}/>
+              id={id} setID={setID} url={BASE_URL}/>
             </div>
           </div>
         )}

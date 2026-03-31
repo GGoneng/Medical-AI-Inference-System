@@ -2,7 +2,7 @@ import axios from "axios";
 import { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 
-const Prediction = ({ id, setLoading }) => {
+const Prediction = ({ id, setLoading, url }) => {
     const [outputs, setOutputs] = useState({ vision: [], llm: [] });
     const [animatedText, setAnimatedText] = useState(null);
     const lastLLMRef = useRef(null);
@@ -27,8 +27,8 @@ const Prediction = ({ id, setLoading }) => {
 
             try {
                 const [visionRes, llmRes] = await Promise.all([
-                    axios.get(`http://localhost:8000/visionOutputs/${id}`),
-                    axios.get(`http://localhost:8000/llmOutputs/${id}`)
+                    axios.get(`${url}/visionOutputs/${id}`),
+                    axios.get(`${url}/llmOutputs/${id}`)
                 ]);
 
                 const visionOut = visionRes.data.outputs || [];
@@ -55,12 +55,13 @@ const Prediction = ({ id, setLoading }) => {
             }
         };
 
-        fetchPrediction();
+        const interval = setInterval(fetchPrediction, 2000);
 
         return () => {
             pollingRef.current = false;
+            clearInterval(interval);
         };
-    }, [id, setLoading]);
+    }, [id, setLoading, url]);
 
     if (!outputs.vision.length && !outputs.llm.length && !animatedText) return null;
 
