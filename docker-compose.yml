@@ -5,7 +5,7 @@ services:
     image: minha512/ai-doctor-backend-deployment-server:latest
     container_name: ai-doctor_backend_service
     volumes:
-      - /data/Weights:/back/Weights
+      - /home/ubuntu/data/Weights:/back/Weights
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -38,7 +38,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - /data/Models:/models
+      - /home/ubuntu/data/Models:/models
     command: >
       --model /models/hari-q3-8b-awq
       --host 0.0.0.0
