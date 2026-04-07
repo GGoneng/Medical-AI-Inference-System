@@ -2,8 +2,7 @@
 
 > ### **End-to-End Medical AI Inference and Web Serving**
 
-<img width="508" height="508" alt="image (1)" src="https://github.com/user-attachments/assets/2da11290-bdbf-4023-bc2e-c8e2d160da90" />
-
+<img width="703" height="914" alt="image" src="https://github.com/user-attachments/assets/3160c098-f351-4416-b613-f0c90422f22c" />
 
 <br><br>
 ## 📖 Overview
@@ -86,7 +85,7 @@ The system aims to enhance diagnostic accuracy, reduce the workload of clinician
 - Expand the number of vision models to support a wider range of diagnostic tasks and improve clinical applicability.  
 - Apply quantization to the hari-q3 model to optimize it for the available server resources. (Done)
 - If high-quality and sufficient datasets are available, consider fine-tuning the model to further enhance diagnostic accuracy.  
-- Evaluate the current vLLM implementation within LangChain for production readiness, and if necessary, deploy a separate vLLM server for robust serving in real-world environments.  
+- Evaluate the current vLLM implementation within LangChain for production readiness, and if necessary, deploy a separate vLLM server for robust serving in real-world environments. (Done) 
 - Deploy the system on AWS to enable scalable and reliable service operation.
 
 <br><br>
