@@ -43,7 +43,6 @@ const Chat = ({ file, setFile, setLoading, id, setID, url}) => {
         
 
         if (file) form.append("file", file);
-        else form.append("file", new Blob());
 
         if (text) form.append("text", text);
 

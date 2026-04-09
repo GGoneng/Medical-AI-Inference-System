@@ -26,13 +26,11 @@ const Prediction = ({ id, setLoading, url }) => {
             if (!pollingRef.current) return;
 
             try {
-                const [visionRes, llmRes] = await Promise.all([
-                    axios.get(`${url}/visionOutputs/${id}`),
-                    axios.get(`${url}/llmOutputs/${id}`)
-                ]);
+                const res = await axios.get(`${url}/Outputs/${id}`);
+                const {vision_output, llm_output, status} = res.data;
 
-                const visionOut = visionRes.data.outputs || [];
-                const llmOut = llmRes.data.outputs || [];
+                const visionOut = vision_output || [];
+                const llmOut = llm_output || [];
 
                 if (visionOut.length === 0 && llmOut.length === 0) return;
 
