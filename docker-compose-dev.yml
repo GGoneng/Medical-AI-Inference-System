@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     image: minha512/ai-doctor_backend:latest
     container_name: ai-doctor_backend_service
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     image: minha512/ai-doctor_frontend:latest
     container_name: ai-doctor_frontend_service
     restart: unless-stopped
