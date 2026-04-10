@@ -14,4 +14,3 @@
 
 
 from XRaySegModules import SegmentationUNet, set_seed, load_model
-
