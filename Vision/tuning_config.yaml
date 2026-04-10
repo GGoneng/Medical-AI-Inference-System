@@ -1,0 +1,26 @@
+# Tuning Config
+
+model: SegmentationUNet
+
+path:
+  train:
+    source: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Train/Source_Data
+    label: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Train/Labeling_Data 
+  val:
+    source: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Validate/Source_Data
+    label: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Validate/Labeling_Data
+  test:
+    source: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Test/Source_Data
+    label: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Test/Labeling_Data
+
+parameters:
+  seed: 7
+  size: 224
+  batch_size: 8
+  epochs: 100
+  learning_rate: 0.001
+  num_classes: 5
+  device: cuda
+  scheduler_patience: 3
+  patience: 10
+  threshold: 0.01
