@@ -44,6 +44,10 @@ except TypeError as e:
         f"\nPath must be a string type."
     ) from e
 
+# 실험 조건 고정
+SEED = config["parameters"]["seed"]
+set_seed(SEED)
+
 # 데이터 경로 설정
 TRAIN_DATA_PATH = config["path"]["train"]["source"]
 TRAIN_LABEL_PATH = config["path"]["train"]["label"]
@@ -143,9 +147,9 @@ train_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file
 val_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in val_label_file_list]
 test_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in test_label_file_list]
 
+# 이미지 전처리
 IMG_SIZE = config["parameters"]["size"]
 
-# 이미지 전처리
 transform = A.Compose([
     A.Resize(IMG_SIZE, IMG_SIZE), 
     A.ShiftScaleRotate(shift_limit=0.005, scale_limit=0, rotate_limit=1, p=0.5), 
@@ -158,6 +162,7 @@ val_test_transform = A.Compose([
     A.pytorch.ToTensorV2()
 ])
 
+# Dataset, DataLoader 구성
 BATCH_SIZE = config["parameters"]["batch_size"]
 
 trainDS = XRayDataset(train_file_list, label_list, transform)
@@ -170,7 +175,6 @@ testDS = XRayDataset(test_file_list, test_label_list, val_test_transform)
 testDL = DataLoader(testDS, batch_size=BATCH_SIZE)
 
 # HyperParameter 설정
-SEED = config["parameters"]["seed"]
 EPOCH = config["parameters"]["epochs"]
 LR = config["parameters"]["learning_rate"]
 

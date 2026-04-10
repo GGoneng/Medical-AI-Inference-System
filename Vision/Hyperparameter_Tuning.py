@@ -61,15 +61,35 @@ from functools import reduce
 
 from XRaySegModules import *
 
+
+# Config 파일 불러오기
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_PATH, "tuning_config.yaml")
+
+try:
+    config = load_config(CONFIG_PATH)
+
+except FileNotFoundError as e:
+    raise FileNotFoundError(
+        f"\nCheck an inputted config path."
+    ) from e
+
+except TypeError as e:
+    raise TypeError(
+        f"\nPath must be a string type."
+    ) from e
+
+
 # 실험 조건 고정
-set_seed(1)
+SEED = config["parameters"]["seed"]
+set_seed(SEED)
 
 # 데이터 경로 설정
-TRAIN_DATA_PATH = "F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Train/Source_Data"
-TRAIN_LABEL_PATH = "F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Train/Labeling_Data"
+TRAIN_DATA_PATH = config["path"]["train"]["source"]
+TRAIN_LABEL_PATH = config["path"]["train"]["label"]
 
-VAL_DATA_PATH = "F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Validate/Source_Data"
-VAL_LABEL_PATH = "F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Validate/Labeling_Data"
+VAL_DATA_PATH = config["path"]["val"]["source"]
+VAL_LABEL_PATH = config["path"]["val"]["label"]
 
 # Training 데이터 준비
 folder_list = []
@@ -84,8 +104,19 @@ for path in folder_list:
         label_file_list.append(os.path.join(path, file_name))
 
 for file in label_file_list:
-    with open(file, "r", encoding="utf-8") as f:
-        label_list.append(json.load(f))
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            label_list.append(json.load(f))
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"\nCheck an inputted labeling data path."
+        )
+    
+    except TypeError as e:
+        raise TypeError(
+            f"\nPath must be a string type."
+        )
 
 # Validation 데이터 준비
 val_folder_list = []
@@ -100,28 +131,43 @@ for path in val_folder_list:
         val_label_file_list.append(os.path.join(path, file_name))
 
 for file in val_label_file_list:
-    with open(file, "r", encoding="utf-8") as f:
-        val_label_list.append(json.load(f))
+    try:
+        with open(file, "r", encoding="utf-8") as f:
+            val_label_list.append(json.load(f))
+    
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"\nCheck an inputted labeling data path."
+        )
+    
+    except TypeError as e:
+        raise TypeError(
+            f"\nPath must be a string type."
+        )
 
-
+# 데이터셋 mapping
 replace_dict = {"Labeling_Data": "Source_Data", ".json": ".png"}
 
 train_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in label_file_list]
 val_file_list = [reduce(lambda x, y: x.replace(*y), replace_dict.items(), file) for file in val_label_file_list]
 
+# 이미지 전처리
+IMG_SIZE = config["parameters"]["size"]
+
 transform = A.Compose([
-    A.Resize(224, 224), 
+    A.Resize(IMG_SIZE, IMG_SIZE), 
     A.ShiftScaleRotate(shift_limit=0.005, scale_limit=0, rotate_limit=1, p=0.5), 
     A.RandomBrightnessContrast(brightness_limit=0.03, contrast_limit=0.03, p=0.5), 
     A.pytorch.ToTensorV2()
 ])
 
 val_transform = A.Compose([
-    A.Resize(224, 224),
+    A.Resize(IMG_SIZE, IMG_SIZE),
     A.pytorch.ToTensorV2()
 ])
 
-BATCH_SIZE = 8
+# Dataset, DataLoader 구성
+BATCH_SIZE = config["parameters"]["batch_size"]
 
 trainDS = XRayDataset(train_file_list, label_list, transform)
 trainDL = DataLoader(trainDS, batch_size=BATCH_SIZE, shuffle=True)
@@ -129,25 +175,28 @@ trainDL = DataLoader(trainDS, batch_size=BATCH_SIZE, shuffle=True)
 valDS = XRayDataset(val_file_list, val_label_list, val_transform)
 valDL = DataLoader(valDS, batch_size=BATCH_SIZE)
 
-EPOCH = 300
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-LR = 1e-4
+# HyperParameter 설정
+EPOCH = config["parameters"]["epochs"]
+LR = config["parameters"]["learning_rate"]
 
-num_classes = 5
+NUM_CLASSES = config["parameters"]["num_classes"]
+DEVICE = config["parameters"]["device"]
 
-model = SegmentationUNet(num_classes=num_classes).to(DEVICE)
+SCHEDULER_PATIENCE = config["parameters"]["scheduler_patience"]
+PATIENCE = config["parameters"]["patience"]
+THRESHOLD = config["parameters"]["threshold"]
+
+model_name = config["model"]
+model = load_model(model_name, NUM_CLASSES, DEVICE)
 
 loss_fn = CustomWeightedLoss(device=DEVICE)
 
 optimizer_list = [optim.Adam(model.parameters(), lr=LR),
              optim.RMSprop(model.parameters(), lr=LR)]
 
-patience = 10
-threshold = 1e-3
-
 for optimizer in optimizer_list:
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=3)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=SCHEDULER_PATIENCE)
 
     loss, score = training(model=model, trainDL=trainDL, valDL=valDL, optimizer=optimizer, 
                         epoch=EPOCH, loss_fn=loss_fn, scheduler=scheduler, 
-                        patience=patience, threshold=threshold, device=DEVICE)
+                        patience=PATIENCE, threshold=THRESHOLD, device=DEVICE)

@@ -404,7 +404,7 @@ def testing(model: nn.Module, weights: str,
 
     return test_score
 
-
+# Config 불러오기
 def load_config(config_file: str) -> Dict[str, Any]:
     with open(config_file, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
@@ -445,3 +445,5 @@ def load_optimizer(optimizer_name: str, model: nn.Module,
         )
     
     return optimizer_dict[optimizer_name](model.parameters(), lr=lr)
+
+# Load Model Weights
