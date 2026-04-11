@@ -428,6 +428,14 @@ def load_model(model_name: str, num_classes: int,
 
     return model_dict[model_name](num_classes=num_classes).to(device)
 
+# 모델 Weights 불러오기
+def load_weights(model: nn.Module, weights: str,
+                 device: DeviceType="cpu") -> nn.Module:
+    model.load_state_dict(torch.load(weights, map_location=torch.device(device), weights_only=True))
+
+    model.eval()
+
+    return model
 
 # Optimizer mapping
 def load_optimizer(optimizer_name: str, model: nn.Module, 

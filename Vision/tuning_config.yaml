@@ -12,6 +12,8 @@ path:
   test:
     source: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Test/Source_Data
     label: F:/Stomach_X-ray/Pediatric_Abdominal_X-ray/Test/Labeling_Data
+  weights: C:/Users/PNC/Desktop/Coding/AI-Doctor/backend/Weights/vision_weights.pth
+  save: C:/Users/PNC/Desktop/Coding/AI-Doctor/Vision/Models
 
 parameters:
   seed: 7
